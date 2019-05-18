@@ -23,63 +23,52 @@ class ServerThread(threading.Thread):
         self.port = port
         self.id = client_id
         self.players = players
-        self.players.append(self)
+        self.players.append(self)  # Add self to list of players
 
     # overriding of Thread run method
     def run(self):
         if self.id == 1:
-            resp = "start##0"
-            self.send_to_all_clients(resp)
-            for item in self.players:
+            resp = "start##0"  # Tell client one that they're connected to the server
+            self.send_to_all_clients(resp)  # Send the message
+            for item in self.players:  # Start players threads
                 item.waitToStart = False
 
-        while True:
-            buf = self.get_request()
-            print("Server got :" + buf)
+        while True:  # Infinite loop until we get an end request from a player
+            buf = self.get_request()  # Get the message as a simple String
+            print("Server got :" + buf)  # Print what we got (for debugging)
 
-            if buf == "Bye":
-                self.send_to_me("Bye")
-                break
+            if buf == "Bye":  # If clients disconnect message will be bye, instructing the end of the process
+                self.send_to_me("Bye")  # Send message to self so that it will be handled
+                break  # Exit the while loop
             else:
-                self.send_to_all_clients(buf)
+                self.send_to_all_clients(buf)  # If not quitting, send message to all the clients where they will handle it
 
-        self.socket.close()
-        print('Closed connection from ip=', self.ip, "port=", self.port)
+        self.socket.close()  # While loop has been exited meaning shutdown of server. Close the socket
+        print('Closed connection from ip=', self.ip, "port=", self.port)  # Inform of server shutdown
         self.players.remove(self)
-        time.sleep(2)
+        time.sleep(2)  # Pause the thread for two seconds to inform clients of shutdown
 
     def get_request(self):
         """Receive request from client and return it."""
-        request = self.socket.recv(BUFFER)
-        # remove white chars (TAB, ENTER)
-        request = request.strip()
-        # decode by utf-8 standart, convert to string
-        request_str = request.decode()
-        return request_str
+        request = self.socket.recv(BUFFER)  # Get message from socket
+        request = request.strip()  # remove white chars (TAB, ENTER)
+        request_str = request.decode()  # decode by utf-8 standart, convert to string
+        return request_str  # Return message once it's been simplified
 
-    def send_to_all_clients(self, response_str):
-        response_str = response_str + "\n"
-        for player_thread in self.players:
-            response = response_str.encode()
-            lock.acquire()
-            player_thread.socket.send(response)
-            lock.release()
+    def send_to_all_clients(self, response_str):  # Send a message to all the clients connected
+        response_str = response_str + "\n"  # Enter in message
+        for player_thread in self.players:  # Send to each player separately
+            response = response_str.encode()  # Encode the message
+            lock.acquire()  # Used for synchronization to make sure data doesn't get corrupted
+            player_thread.socket.send(response)  # Send the message through the socket
+            lock.release()  # Release the lock to allow messages to continue to come
 
-    def send_to_opponents(self, response_str):
-        response_str = response_str + "\n"
-        for player_thread in self.players:
-            if player_thread.socket != self.socket:
-                response = response_str.encode()
-                lock.acquire()
-                player_thread.socket.send(response)
-                lock.release()
-
-    def send_to_me(self, response_str):
-        response_str = response_str + "\n"
-        response = response_str.encode()
-        lock.acquire()
-        self.socket.send(response)
-        lock.release()
+    def send_to_me(self, response_str):  # Send message to server for quitting if needed.
+        response_str = response_str + "\n"  # Enter in message
+        response = response_str.encode()  # Encode the message
+        lock.acquire()  # Used for synchronization to make sure data doesn't get corrupted
+        self.socket.send(response)  # Send the message through the socket
+        lock.release()  # Release the lock to allow messages to continue to come
 
 
 def main():
@@ -97,7 +86,7 @@ def main():
     # Other sockets like UDP , ICMP , ARP dont have a concept of "connection". These are non-connection based
     # communication. Which means you keep sending or receiving packets from anybody and everybody.
 
-    # Helps to system forget server after 1 second
+    # Helps the system to forget the server after 1 second
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     try:
@@ -117,18 +106,18 @@ def main():
         # connection loop
         while j < NUM_OF_CLIENTS:
             new_client = server_socket.accept()  # Connected point. Server wait for client
-            socket, address = new_client
+            socket, address = new_client  # Get info from our client
             ip, port = address
 
-            print("Received connection from ip=:", ip, "port=", port)
-            resp = "Wait to start##" + str(j) + "\n"
-            socket.send(resp.encode())
+            print("Received connection from ip=:", ip, "port=", port)  # Inform us of a connected client and their origin
+            resp = "Wait to start##" + str(j) + "\n"  # Tell client to wait for now
+            socket.send(resp.encode())  # Send the message
 
             # Start thread:
             current_player_thread = ServerThread(ip, port, socket, j, players)
             threads.append(current_player_thread)
 
-            j = j + 1
+            j = j + 1  # Counter
         for thread in threads:
             thread.start()  # ServerThread(...) - run constructor, start() - run run() method
         for thread in threads:
@@ -141,7 +130,7 @@ def main():
         raise e
 
     finally:
-        server_socket.close()
+        server_socket.close()  # Close the socket
 
 
 if __name__ == '__main__':
