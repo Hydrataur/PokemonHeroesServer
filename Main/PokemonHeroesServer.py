@@ -4,18 +4,20 @@ import time
 # constants
 PORT_NUMBER = 12345  # Port through which clients connect
 BUFFER = 1024
-NUM_OF_CLIENTS = 3
+NUM_OF_CLIENTS = 3  # Two player clients and Android
 
 # global variables
 threads = []
-lock = threading.Lock()
 
 
-# Extends Thread class that works with one client
 class ServerThread(threading.Thread):
-
-    # overriding of constructor
+    """
+    Extends Thread class that works with one client
+    """
     def __init__(self, ip, port, socket, client_id, players):
+        """
+        Constructor, fields definition
+        """
         threading.Thread.__init__(self)
         self.waitToStart = True
         self.socket = socket
@@ -25,8 +27,11 @@ class ServerThread(threading.Thread):
         self.players = players
         self.players.append(self)  # Add self to list of players
 
-    # overriding of Thread run method
     def run(self):
+        """"
+        Overriding of Thread run method
+        Includes implementation of protocol between server/client
+        """
         if self.id == 1:
             resp = "start##0"  # Tell client one that they're connected to the server
             self.send_to_all_clients(resp)  # Send the message
@@ -49,42 +54,47 @@ class ServerThread(threading.Thread):
         time.sleep(2)  # Pause the thread for two seconds to inform clients of shutdown
 
     def get_request(self):
-        """Receive request from client and return it."""
+        """
+        Receive request from client and return it.
+        """
         request = self.socket.recv(BUFFER)  # Get message from socket
         request = request.strip()  # remove white chars (TAB, ENTER)
         request_str = request.decode()  # decode by utf-8 standart, convert to string
         return request_str  # Return message once it's been simplified
 
-    def send_to_all_clients(self, response_str):  # Send a message to all the clients connected
+    def send_to_all_clients(self, response_str):
+        """
+        Send a message to all the clients connected
+        """
         response_str = response_str + "\n"  # Enter in message
         for player_thread in self.players:  # Send to each player separately
             response = response_str.encode()  # Encode the message
-            lock.acquire()  # Used for synchronization to make sure data doesn't get corrupted
             player_thread.socket.send(response)  # Send the message through the socket
-            lock.release()  # Release the lock to allow messages to continue to come
 
-    def send_to_me(self, response_str):  # Send message to server for quitting if needed.
+    def send_to_me(self, response_str):
+        """
+        Send message to server for quitting if needed
+        """
         response_str = response_str + "\n"  # Enter in message
         response = response_str.encode()  # Encode the message
-        lock.acquire()  # Used for synchronization to make sure data doesn't get corrupted
         self.socket.send(response)  # Send the message through the socket
-        lock.release()  # Release the lock to allow messages to continue to come
 
 
 def main():
-    # Set up the server:
-
-    # create an INET, STREAMing socket
-    # INET socket - IP protocol based sockets which use IP addresses and ports
-    # A socket is just an abstraction of a communication end point
+    """
+    Set up the server:
+    create an INET, STREAMing socket
+    INET socket - IP protocol based sockets which use IP addresses and ports
+    A socket is just an abstraction of a communication end point
+    Address Family : AF_INET (this is IP version 4 or IPv4 - 32 bit address - 4 byte address)
+    Type : SOCK_STREAM (this means connection oriented TCP protocol)
+    Connection means a reliable "stream" of data. The TCP packets have an "order" or "sequence"
+    Apart from SOCK_STREAM type of sockets there is another type called SOCK_DGRAM which indicates the UDP protocol.
+    Other sockets like UDP , ICMP , ARP dont have a concept of "connection". These are non-connection based
+    communication. Which means you keep sending or receiving packets from anybody and everybody.
+    """
     import socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Address Family : AF_INET (this is IP version 4 or IPv4 - 32 bit address - 4 byte address)
-    # Type : SOCK_STREAM (this means connection oriented TCP protocol)
-    # Connection means a reliable "stream" of data. The TCP packets have an "order" or "sequence"
-    # Apart from SOCK_STREAM type of sockets there is another type called SOCK_DGRAM which indicates the UDP protocol.
-    # Other sockets like UDP , ICMP , ARP dont have a concept of "connection". These are non-connection based
-    # communication. Which means you keep sending or receiving packets from anybody and everybody.
 
     # Helps the system to forget the server after 1 second
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -134,4 +144,7 @@ def main():
 
 
 if __name__ == '__main__':
+    """
+    Enter main function
+    """
     main()
